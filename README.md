@@ -7,7 +7,7 @@ nano all.gene.fasta
 ```
 makeblastdb -in all_markers.fasta -dbtype nucl -out all_markers
 ```
-## Blast
+## Blast EHEC
 ```
 mkdir -p blast_out
 mkdir -p blast_hits_only
@@ -28,6 +28,32 @@ for f in $(find /home/jing/E.coli/blast_results/EHEC_assemblies -name "*.fna"); 
   if [ -s "$out_file" ]; then
       cp "$out_file" blast_hits_only/
       echo "✅ Hits found in $folder — copied to blast_hits_only/"
+  else
+      echo "❌ No hits for $folder"
+  fi
+done
+```
+## Blast EPEC
+```
+mkdir -p blast_out_EPEC
+mkdir -p blast_hits_only_EPEC
+
+for f in $(find /home/jing/E.coli/blast_results/EPEC_assemblies -name "*.fna"); do
+  folder=$(basename "$(dirname "$f")")
+  base=$(basename "$f" .fna)
+  out_file="blast_out_EPEC/${folder}_${base}_hits.tsv"
+
+  echo "Running BLAST on $folder ..."
+
+  blastn -query all_markers.fasta \
+         -subject "$f" \
+         -outfmt "6 qseqid sseqid pident length qlen qstart qend sstart send evalue bitscore" \
+         | awk '{cov=($4/$5)*100; if($3>=80 && cov>=80) print $0}' > "$out_file"
+
+  # If file is non-empty (has hits), copy to hits-only folder
+  if [ -s "$out_file" ]; then
+      cp "$out_file" blast_hits_only_EPEC/
+      echo "✅ Hits found in $folder — copied to blast_hits_only_EPEC/"
   else
       echo "❌ No hits for $folder"
   fi
@@ -126,6 +152,13 @@ python make_marker_matrix.py \
   -f all_markers.fasta \
   -o marker_presence_absence_EHCE.tsv
 ```
+```
+python make_marker_matrix.py \
+  -b blast_out_EPEC \
+  -f all_markers.fasta \
+  -o marker_presence_absence_EPEC.tsv
+```
+
 ## Count all espK/espV/espN combinations with in EHEC
 count_EHEC_esp.py
 ```
@@ -190,5 +223,69 @@ summary.to_csv("EHEC_esp_counts_percentages.csv", index=False)
 print("\nSaved to: EHEC_esp_counts_percentages.csv")
 ```
 <img width="424" height="267" alt="image" src="https://github.com/user-attachments/assets/bbf02961-c7ea-4737-b0d1-821386de40f6" />
+
+## Count all espK/espV/espN combinations with in EPEC
+count_PHEC_esp.py
+```
+#!/usr/bin/env python3
+import pandas as pd
+
+# 1. Load your EPEC-only table
+df = pd.read_csv("marker_presence_absence_EPEC.tsv", sep="\t")
+
+# 2. Boolean presence for each gene
+K = df["espK"] == 1
+V = df["espV"] == 1
+N = df["espN"] == 1
+
+total = len(df)
+
+rows = []
+
+def add(label, mask):
+    count = int(mask.sum())
+    pct = round(count / total * 100, 2) if total > 0 else 0.0
+    rows.append({"Pattern": label, "Count": count, "Percent(%)": pct})
+
+# 3. Individual genes
+add("espK(+)", K)
+add("espV(+)", V)
+add("espN(+)", N)
+
+# 4. Simple combinations (AND / OR)
+add("espK(+) AND espV(+)", K & V)
+add("espK(+) AND espN(+)", K & N)
+add("espV(+) AND espN(+)", V & N)
+add("espK(+) AND espV(+) AND espN(+)", K & V & N)
+add("espK(+) OR espV(+) OR espN(+)", K | V | N)
+
+# 5. 8 mutually exclusive patterns (K/V/N all combos)
+onlyK =  K & ~V & ~N
+onlyV = ~K &  V & ~N
+onlyN = ~K & ~V &  N
+KV    =  K &  V & ~N
+KN    =  K & ~V &  N
+VN    = ~K &  V &  N
+KVN   =  K &  V &  N
+none  = ~K & ~V & ~N
+
+add("espK only (K+ V- N-)", onlyK)
+add("espV only (K- V+ N-)", onlyV)
+add("espN only (K- V- N+)", onlyN)
+add("espK & espV (K+ V+ N-)", KV)
+add("espK & espN (K+ V- N+)", KN)
+add("espV & espN (K- V+ N+)", VN)
+add("espK & espV & espN (K+ V+ N+)", KVN)
+add("none esp (K- V- N-)", none)
+
+# 6. Make DataFrame and save / print
+summary = pd.DataFrame(rows)
+
+print(f"Total EHEC isolates: {total}\n")
+print(summary)
+
+summary.to_csv("EPEC_esp_counts_percentages.csv", index=False)
+print("\nSaved to: EPEC_esp_counts_percentages.csv")
+```
 
 
