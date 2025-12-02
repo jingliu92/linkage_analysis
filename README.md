@@ -287,5 +287,6 @@ print(summary)
 summary.to_csv("EPEC_esp_counts_percentages.csv", index=False)
 print("\nSaved to: EPEC_esp_counts_percentages.csv")
 ```
+<img width="464" height="294" alt="image" src="https://github.com/user-attachments/assets/99772169-4d96-48fe-a4c4-5e1c64dabe3d" />
 
 
