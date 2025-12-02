@@ -1,5 +1,16 @@
 # linkage_analysis
+Rationale: esp+ genotype is ~99% associated with EHEC but it also associated with EPEC pathovar.  This confounds the use of esp genotypes to screen for EHEC pathovars. Here this analysis will determine whether a particular serotype is associate specifically with esp positive and esp negative EPEC pathovars. If such linkage is found, serotype markers can be especially used to identify esp positve EPEC pathovars. 
 
+1. EHEC with espK+, espV+, espN+
+
+2. EPEC with espK+, espV+, espN+
+
+3. EPEC with espK-, espV-, espN-
+
+To do this, three steps are required:
+step 1: Classify the distribution of esp+ genes within EHEC or EPEC
+step 2: extract assemblies with/without espK+, espV+, espN+ for EHEC and EPEC
+step 3: serotyping
 ## Create marker gene file
 nano all.gene.fasta
 
@@ -289,4 +300,49 @@ print("\nSaved to: EPEC_esp_counts_percentages.csv")
 ```
 <img width="464" height="294" alt="image" src="https://github.com/user-attachments/assets/99772169-4d96-48fe-a4c4-5e1c64dabe3d" />
 
+
+Step 2: Filter EHEC strains with espK/espV/espN positive
+```
+cd /home/jing/E.coli/blast_results/linkage/serotype
+
+awk -F'EHEC_assemblies_' '{print $2}' EHEC_esp_any_positive_ids.txt \
+  > EHEC_esp_any_positive_ids.core.txt
+```
+filter_esp_positive_EHEC.py
+```
+#!/usr/bin/env bash
+set -euo pipefail
+
+IDS_FILE="/home/jing/E.coli/blast_results/linkage/serotype/EHEC_esp_any_positive_ids.core.txt"
+ASSEMBLY_ROOT="/home/jing/E.coli/blast_results/EHEC_assemblies"
+OUTDIR="/home/jing/E.coli/blast_results/linkage/serotype/ectyper_out"
+mkdir -p "$OUTDIR"
+
+while read -r core; do
+    [ -z "$core" ] && continue
+
+    echo "=== Processing core: $core"
+
+    fna=$(find "$ASSEMBLY_ROOT" -type f -name "${core}.fna" | head -n 1)
+
+    if [ -z "$fna" ]; then
+        echo "    ❌ No .fna found for $core"
+        continue
+    fi
+
+    sample_out="${OUTDIR}/${core}"
+    mkdir -p "$sample_out"
+
+    ectyper -i "$fna" -o "$sample_out"
+
+    echo "    ✅ ECTyper done -> $sample_out"
+done < "$IDS_FILE"
+```
+```
+chmod +x run_ectyper_esp_positive.sh
+```
+```
+cd /home/jing/E.coli/blast_results/linkage/serotype
+./run_ectyper_esp_positive.sh
+```
 
