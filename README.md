@@ -13,7 +13,7 @@ step 2: extract assemblies with/without espK+, espV+, espN+ for EHEC and EPEC
 step 3: serotyping
 ## Create marker gene file
 nano all.gene.fasta
-
+## Step 1: Classify the distribution of esp+ genes within EHEC or EPEC
 ## make db
 ```
 makeblastdb -in all_markers.fasta -dbtype nucl -out all_markers
@@ -301,7 +301,7 @@ print("\nSaved to: EPEC_esp_counts_percentages.csv")
 <img width="464" height="294" alt="image" src="https://github.com/user-attachments/assets/99772169-4d96-48fe-a4c4-5e1c64dabe3d" />
 
 
-Step 2.1: Filter EHEC strains with espK/espV/espN positive
+## Step 2.1: Filter EHEC strains with espK/espV/espN positive
 
 filter_esp_positive_EHEC.py
 ```
@@ -420,3 +420,4 @@ chmod +x run_ectyper_esp_positive_EPEC.sh
 cd /home/jing/E.coli/blast_results/linkage/serotype
 ./run_ectyper_esp_positive_EPEC.sh
 ```
+## Step 2.1: Filter EPEC strains with espK/espV/espN negative
