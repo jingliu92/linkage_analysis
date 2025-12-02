@@ -126,49 +126,69 @@ python make_marker_matrix.py \
   -f all_markers.fasta \
   -o marker_presence_absence_EHCE.tsv
 ```
-## count all espK/espV/espN combinations with in EHEC
+## Count all espK/espV/espN combinations with in EHEC
+count_EHEC_esp.py
 ```
 #!/usr/bin/env python3
 import pandas as pd
 
-# 1. Read matrix
-df = pd.read_csv("marker_presence_absence.tsv", sep="\t")
+# 1. Load your EHEC-only table
+df = pd.read_csv("marker_presence_absence_EHCE.tsv", sep="\t")
 
-genes = ["espK", "espV", "espN"]
+# 2. Boolean presence for each gene
+K = df["espK"] == 1
+V = df["espV"] == 1
+N = df["espN"] == 1
 
-# 2. Make a nice combo label like espK+_espV-_espN+
-def make_label(row):
-    parts = []
-    for g in genes:
-        val = row[g]
-        sign = "+" if val == 1 else "-"
-        parts.append(f"{g}{sign}")
-    return "_".join(parts)
+total = len(df)
 
-df["combo"] = df.apply(make_label, axis=1)
+rows = []
 
-# 3. Overall counts of all combinations
-combo_counts = df["combo"].value_counts().reset_index()
-combo_counts.columns = ["Combination", "N_isolates"]
-print("Overall espK/espV/espN combinations:")
-print(combo_counts)
+def add(label, mask):
+    count = int(mask.sum())
+    pct = round(count / total * 100, 2) if total > 0 else 0.0
+    rows.append({"Pattern": label, "Count": count, "Percent(%)": pct})
 
-# 4. If you have a Pathovar column, stratify by EHEC vs others
-if "Pathovar" in df.columns:
-    table = (
-        df.groupby(["Pathovar", "combo"])
-          .size()
-          .reset_index(name="N_isolates")
-          .pivot(index="combo", columns="Pathovar", values="N_isolates")
-          .fillna(0)
-          .astype(int)
-    )
-    print("\nCombination counts by Pathovar:")
-    print(table)
+# 3. Individual genes
+add("espK(+)", K)
+add("espV(+)", V)
+add("espN(+)", N)
 
-    # Save tables
-    combo_counts.to_csv("espK_espV_espN_combos_overall.tsv", sep="\t", index=False)
-    table.to_csv("espK_espV_espN_combos_by_pathovar.tsv", sep="\t")
-else:
-    combo_counts.to_csv("espK_espV_espN_combos_overall.tsv", sep="\t", index=False)
+# 4. Simple combinations (AND / OR)
+add("espK(+) AND espV(+)", K & V)
+add("espK(+) AND espN(+)", K & N)
+add("espV(+) AND espN(+)", V & N)
+add("espK(+) AND espV(+) AND espN(+)", K & V & N)
+add("espK(+) OR espV(+) OR espN(+)", K | V | N)
+
+# 5. 8 mutually exclusive patterns (K/V/N all combos)
+onlyK =  K & ~V & ~N
+onlyV = ~K &  V & ~N
+onlyN = ~K & ~V &  N
+KV    =  K &  V & ~N
+KN    =  K & ~V &  N
+VN    = ~K &  V &  N
+KVN   =  K &  V &  N
+none  = ~K & ~V & ~N
+
+add("espK only (K+ V- N-)", onlyK)
+add("espV only (K- V+ N-)", onlyV)
+add("espN only (K- V- N+)", onlyN)
+add("espK & espV (K+ V+ N-)", KV)
+add("espK & espN (K+ V- N+)", KN)
+add("espV & espN (K- V+ N+)", VN)
+add("espK & espV & espN (K+ V+ N+)", KVN)
+add("none esp (K- V- N-)", none)
+
+# 6. Make DataFrame and save / print
+summary = pd.DataFrame(rows)
+
+print(f"Total EHEC isolates: {total}\n")
+print(summary)
+
+summary.to_csv("EHEC_esp_counts_percentages.csv", index=False)
+print("\nSaved to: EHEC_esp_counts_percentages.csv")
 ```
+<img width="424" height="267" alt="image" src="https://github.com/user-attachments/assets/bbf02961-c7ea-4737-b0d1-821386de40f6" />
+
+
