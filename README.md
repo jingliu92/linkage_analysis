@@ -301,21 +301,56 @@ print("\nSaved to: EPEC_esp_counts_percentages.csv")
 <img width="464" height="294" alt="image" src="https://github.com/user-attachments/assets/99772169-4d96-48fe-a4c4-5e1c64dabe3d" />
 
 
-Step 2: Filter EHEC strains with espK/espV/espN positive
+Step 2.1: Filter EHEC strains with espK/espV/espN positive
+
+filter_esp_positive_EHEC.py
+```
+#!/usr/bin/env python3
+import pandas as pd
+
+# 1. Load your EHEC presence/absence table
+df = pd.read_csv("marker_presence_absence_EHCE.tsv", sep="\t")
+
+# 🔴 Change this if your ID column has a different name
+id_col = "Sample"
+
+# 2. Boolean mask for espK(+) OR espV(+) OR espN(+)
+mask_any_esp = (df["espK"] == 1) | (df["espV"] == 1) | (df["espN"] == 1)
+
+subset = df[mask_any_esp].copy()
+
+print(f"Total EHEC isolates: {len(df)}")
+print(f"EHEC with espK/V/N positive: {len(subset)}")
+
+# 3. Save list of IDs (one per line) for looping
+subset_ids = subset[id_col].drop_duplicates()
+subset_ids.to_csv("serotype/EHEC_esp_any_positive_ids.txt",
+                  index=False, header=False)
+
+# Optional: save full metadata for those
+subset.to_csv("serotype/EHEC_esp_any_positive_metadata.tsv",
+              sep="\t", index=False)
+
+print("Saved IDs to: EHEC_esp_any_positive_ids.txt")
+print("Saved metadata to: EHEC_esp_any_positive_metadata.tsv")
+```
+
 ```
 cd /home/jing/E.coli/blast_results/linkage/serotype
 
 awk -F'EHEC_assemblies_' '{print $2}' EHEC_esp_any_positive_ids.txt \
   > EHEC_esp_any_positive_ids.core.txt
 ```
-filter_esp_positive_EHEC.py
+## Serotyping with ectyper
+### EHEC
+run_ectyper_esp_positive_EHEC.sh
 ```
 #!/usr/bin/env bash
 set -euo pipefail
 
 IDS_FILE="/home/jing/E.coli/blast_results/linkage/serotype/EHEC_esp_any_positive_ids.core.txt"
 ASSEMBLY_ROOT="/home/jing/E.coli/blast_results/EHEC_assemblies"
-OUTDIR="/home/jing/E.coli/blast_results/linkage/serotype/ectyper_out"
+OUTDIR="/home/jing/E.coli/blast_results/linkage/serotype/ectyper_out_EHEC"
 mkdir -p "$OUTDIR"
 
 while read -r core; do
@@ -339,10 +374,49 @@ while read -r core; do
 done < "$IDS_FILE"
 ```
 ```
-chmod +x run_ectyper_esp_positive.sh
+chmod +x run_ectyper_esp_positive_EHEC.sh
 ```
 ```
 cd /home/jing/E.coli/blast_results/linkage/serotype
-./run_ectyper_esp_positive.sh
+./run_ectyper_esp_positive_EHEC.sh
 ```
 
+
+### EPEC
+run_ectyper_esp_positive_EPEC.sh
+```
+#!/usr/bin/env bash
+set -euo pipefail
+
+IDS_FILE="/home/jing/E.coli/blast_results/linkage/serotype/EPEC_esp_any_positive_ids.core.txt"
+ASSEMBLY_ROOT="/home/jing/E.coli/blast_results/EPEC_assemblies"
+OUTDIR="/home/jing/E.coli/blast_results/linkage/serotype/ectyper_out_EPEC"
+mkdir -p "$OUTDIR"
+
+while read -r core; do
+    [ -z "$core" ] && continue
+
+    echo "=== Processing core: $core"
+
+    fna=$(find "$ASSEMBLY_ROOT" -type f -name "${core}.fna" | head -n 1)
+
+    if [ -z "$fna" ]; then
+        echo "    ❌ No .fna found for $core"
+        continue
+    fi
+
+    sample_out="${OUTDIR}/${core}"
+    mkdir -p "$sample_out"
+
+    ectyper -i "$fna" -o "$sample_out"
+
+    echo "    ✅ ECTyper done -> $sample_out"
+done < "$IDS_FILE"
+```
+```
+chmod +x run_ectyper_esp_positive_EPEC.sh
+```
+```
+cd /home/jing/E.coli/blast_results/linkage/serotype
+./run_ectyper_esp_positive_EPEC.sh
+```
