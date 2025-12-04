@@ -1061,7 +1061,7 @@ def main():
 if __name__ == "__main__":
     main()
 ```
-<img width="2000" height="1035" alt="image" src="https://github.com/user-attachments/assets/82e9cda8-a40f-4814-9cdf-35401334ba7e" />
+<img width="2000" height="1035" alt="image" src="https://github.com/user-attachments/assets/4081e0a8-ee8d-4de1-91f0-ad2bc84b0542" />
 
 8. Plot Distribution of esp-Negative Serotypes Only
 plot_espNEG_only.py
