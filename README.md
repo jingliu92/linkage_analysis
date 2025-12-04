@@ -233,7 +233,8 @@ print(summary)
 summary.to_csv("EHEC_esp_counts_percentages.csv", index=False)
 print("\nSaved to: EHEC_esp_counts_percentages.csv")
 ```
-<img width="424" height="267" alt="image" src="https://github.com/user-attachments/assets/bbf02961-c7ea-4737-b0d1-821386de40f6" />
+<img width="445" height="295" alt="image" src="https://github.com/user-attachments/assets/f5dcd2bc-c708-4ac9-8cd3-309cff08b7ef" />
+
 
 ## Count all espK/espV/espN combinations with in EPEC
 count_PHEC_esp.py
@@ -292,13 +293,13 @@ add("none esp (K- V- N-)", none)
 # 6. Make DataFrame and save / print
 summary = pd.DataFrame(rows)
 
-print(f"Total EHEC isolates: {total}\n")
+print(f"Total EPEC isolates: {total}\n")
 print(summary)
 
 summary.to_csv("EPEC_esp_counts_percentages.csv", index=False)
 print("\nSaved to: EPEC_esp_counts_percentages.csv")
 ```
-<img width="464" height="294" alt="image" src="https://github.com/user-attachments/assets/99772169-4d96-48fe-a4c4-5e1c64dabe3d" />
+<img width="457" height="296" alt="image" src="https://github.com/user-attachments/assets/fb7e05df-f688-480f-bee4-8fdc0550f1ac" />
 
 
 ## Step 2.1: Filter EHEC strains with espK/espV/espN positive
