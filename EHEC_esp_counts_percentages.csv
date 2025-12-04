@@ -1,0 +1,17 @@
+Pattern,Count,Percent(%)
+espK(+),1018,91.38
+espV(+),974,87.43
+espN(+),985,88.42
+espK(+) AND espV(+),893,80.16
+espK(+) AND espN(+),944,84.74
+espV(+) AND espN(+),914,82.05
+espK(+) AND espV(+) AND espN(+),880,78.99
+espK(+) OR espV(+) OR espN(+),1106,99.28
+espK only (K+ V- N-),61,5.48
+espV only (K- V+ N-),47,4.22
+espN only (K- V- N+),7,0.63
+espK & espV (K+ V+ N-),13,1.17
+espK & espN (K+ V- N+),64,5.75
+espV & espN (K- V+ N+),34,3.05
+espK & espV & espN (K+ V+ N+),880,78.99
+none esp (K- V- N-),8,0.72
