@@ -1,19 +1,19 @@
-# linkage_analysis
-Rationale: esp+ genotype is ~99% associated with EHEC but it also associated with EPEC pathovar.  This confounds the use of esp genotypes to screen for EHEC pathovars. Here this analysis will determine whether a particular serotype is associate specifically with esp positive and esp negative EPEC pathovars. If such linkage is found, serotype markers can be especially used to identify esp positve EPEC pathovars. 
+# espK/espV/espN–Serotype Linkage Analysis
+⭐ Rationale
+The espK, espV, and espN effector genes are strongly associated with enterohemorrhagic E. coli (EHEC), with approximately 99% of EHEC genomes carrying at least one of these markers. However, these esp genes are also present in a subset of enteropathogenic E. coli (EPEC) strains, which confounds the use of esp genotypes as simple, stand-alone indicators for distinguishing EHEC from EPEC. To clarify the lineage specificity of these genes, it is essential to determine whether esp-positive genotypes occur preferentially within particular EPEC serotypes and whether esp-negative EPEC strains are restricted to distinct serotype lineages.
 
-1. EHEC with espK+, espV+, espN+
+By resolving the serotype distribution of esp-positive and esp-negative EPEC isolates, we can assess whether specific serotypes reliably predict esp gene carriage. If such linkage is observed, serotype markers may be used to identify esp-positive EPEC pathovars with higher accuracy, improving virulence prediction and strain classification in surveillance and genomic diagnostics.
 
-2. EPEC with espK+, espV+, espN+
+To accomplish this, we performed a three-step analysis:
 
-3. EPEC with espK-, espV-, espN-
+- Classify the distribution of espK/espV/espN within EHEC and EPEC, defining esp-positive and esp-negative subpopulations.
 
-To do this, three steps are required:
-step 1: Classify the distribution of esp+ genes within EHEC or EPEC
-step 2: extract assemblies with/without espK+, espV+, espN+ for EHEC and EPEC
-step 3: serotyping
+- Extract genome assemblies corresponding to each genotype category (esp+ EHEC, esp+ EPEC, esp– EPEC).
+
+- Perform high-resolution serotyping using ECTyper to determine whether specific serotypes are enriched for esp-positive or esp-negative profiles.
+# Step1: Classify the distribution of espK/espV/espN within EHEC and EPEC, defining esp-positive and esp-negative subpopulations.
 ## Create marker gene file
 nano all.gene.fasta
-## Step 1: Classify the distribution of esp+ genes within EHEC or EPEC
 ## make db
 ```
 makeblastdb -in all_markers.fasta -dbtype nucl -out all_markers
