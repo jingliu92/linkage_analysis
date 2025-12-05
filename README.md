@@ -20,30 +20,31 @@ makeblastdb -in all_markers.fasta -dbtype nucl -out all_markers
 ```
 ## Blast EHEC
 ```
-mkdir -p blast_out
-mkdir -p blast_hits_only
+mkdir -p blast_out_EHEC
+mkdir -p blast_hits_only_EHEC
 
 for f in $(find /home/jing/E.coli/blast_results/EHEC_assemblies -name "*.fna"); do
   folder=$(basename "$(dirname "$f")")
   base=$(basename "$f" .fna)
-  out_file="blast_out/${folder}_${base}_hits.tsv"
+  out_file="blast_out_EHEC/${folder}_${base}_hits.tsv"
 
   echo "Running BLAST on $folder ..."
 
   blastn -query all_markers.fasta \
          -subject "$f" \
          -outfmt "6 qseqid sseqid pident length qlen qstart qend sstart send evalue bitscore" \
-         | awk '{cov=($4/$5)*100; if($3>=80 && cov>=80) print $0}' > "$out_file"
+         | awk '{cov=($4/$5)*100; if($3>=90 && cov>=90) print $0}' > "$out_file"
 
   # If file is non-empty (has hits), copy to hits-only folder
   if [ -s "$out_file" ]; then
-      cp "$out_file" blast_hits_only/
-      echo "✅ Hits found in $folder — copied to blast_hits_only/"
+      cp "$out_file" blast_hits_only_EHEC/
+      echo "✅ Hits found in $folder — copied to blast_hits_only_EHEC/"
   else
       echo "❌ No hits for $folder"
   fi
 done
 ```
+
 ## Blast EPEC
 ```
 mkdir -p blast_out_EPEC
@@ -59,7 +60,7 @@ for f in $(find /home/jing/E.coli/blast_results/EPEC_assemblies -name "*.fna"); 
   blastn -query all_markers.fasta \
          -subject "$f" \
          -outfmt "6 qseqid sseqid pident length qlen qstart qend sstart send evalue bitscore" \
-         | awk '{cov=($4/$5)*100; if($3>=80 && cov>=80) print $0}' > "$out_file"
+         | awk '{cov=($4/$5)*100; if($3>=90 && cov>=90) print $0}' > "$out_file"
 
   # If file is non-empty (has hits), copy to hits-only folder
   if [ -s "$out_file" ]; then
@@ -161,7 +162,7 @@ if __name__ == "__main__":
 python make_marker_matrix.py \
   -b blast_out_EHEC \
   -f all_markers.fasta \
-  -o marker_presence_absence_EHCE.tsv
+  -o marker_presence_absence_EHEC.tsv
 ```
 ```
 python make_marker_matrix.py \
