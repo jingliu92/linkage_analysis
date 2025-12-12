@@ -1265,3 +1265,229 @@ if __name__ == "__main__":
 ```
 <img width="1181" height="799" alt="image" src="https://github.com/user-attachments/assets/410bbc6d-7d54-4fbf-8fd5-21e4bed7c406" />
 
+We wanna to find strains that are missed when we use espK OR espV instead of espK OR espV OR espN. In other words, we want isolates that are:
+
+- Positive under espKVN = (espK OR espV OR espN)
+- Negative under espKV = (espK OR espV)
+
+That logically means:
+
+espK = 0, espV = 0, espN = 1 → “espN-only” strains
+
+Those are exactly:
+
+the 7 EHEC you mentioned, and
+
+the 4 EPEC that get “lost” when we drop espN from the definition.
+`find_espN_only_strains.py`
+```
+#!/usr/bin/env python3
+import pandas as pd
+
+def find_espN_only(infile, label, prefix):
+    """
+    Find isolates that are positive for espANY (K or V or N)
+    but negative for espKV (K or V) -> espN-only.
+    """
+    df = pd.read_csv(infile, sep="\t")
+
+    # Make sure markers are numeric 0/1
+    for col in ["espK", "espV", "espN"]:
+        if col not in df.columns:
+            raise ValueError(f"Missing column '{col}' in {infile}")
+        df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0).astype(int)
+
+    # espKV = espK OR espV
+    espKV = (df["espK"] == 1) | (df["espV"] == 1)
+    # espKVN = espK OR espV OR espN
+    espKVN = espKV | (df["espN"] == 1)
+
+    # Strains that are detected by espKVN but NOT by espKV
+    # i.e. espKVN==True and espKV==False  => espK=0, espV=0, espN=1
+    mask_espN_only = (espKVN) & (~espKV)
+
+    subset = df[mask_espN_only].copy()
+    n = len(subset)
+
+    print(f"\n[{label}] espN-only positives (lost when using espK OR espV only): {n}")
+
+    # Save IDs only
+    id_col = "Sample" if "Sample" in df.columns else df.columns[0]
+    ids = subset[id_col].dropna().drop_duplicates()
+    ids_file = f"{prefix}_espN_only_ids.txt"
+    ids.to_csv(ids_file, index=False, header=False)
+    print(f"  → IDs saved to: {ids_file}")
+
+    # Save full table for these isolates
+    details_file = f"{prefix}_espN_only_details.tsv"
+    subset.to_csv(details_file, sep="\t", index=False)
+    print(f"  → Details saved to: {details_file}")
+
+
+if __name__ == "__main__":
+    # Adjust paths if needed
+    find_espN_only("marker_presence_absence_EHEC.tsv", "EHEC", "EHEC")
+    find_espN_only("marker_presence_absence_EPEC.tsv", "EPEC", "EPEC")
+```
+
+## serotype + intimin allele profiling for espN-only (EHEC & EPEC)
+
+Save as: profile_espN_only_EHEC_EPEC.py
+```
+#!/usr/bin/env python3
+import pandas as pd
+
+# -------------------------
+# Inputs (edit if needed)
+# -------------------------
+EHEC_MARKERS = "marker_presence_absence_EHCE.tsv"
+EPEC_MARKERS = "marker_presence_absence_EPEC.tsv"
+
+EHEC_IDS = "EHEC_espN_only_ids.txt"
+EPEC_IDS = "EPEC_espN_only_ids.txt"
+
+# These should be your merged marker+serotype tables (the ones you used for plots)
+# If yours are named differently, just edit these paths.
+EHEC_SEROTYPE_TSV = "EHEC_espPOS_with_serotype.tsv"
+EPEC_SEROTYPE_TSV = "EPEC_espPOS_with_serotype.tsv"
+
+# Intimin allele columns (use the ones you actually have; Z2098 excluded as requested earlier)
+INTIMIN_ALLELES = [
+    "Gamma","Sigma","Mu","THETA","TAU","alpha_2","alpha_1","beta","RHO",
+    "Epsilon","Kappa","lambda","zeta","eta","xi","nu","omicron","pi","UPSILON"
+]
+
+# -------------------------
+# Helpers
+# -------------------------
+def load_ids(path):
+    return set(pd.read_csv(path, header=None)[0].astype(str).str.strip().tolist())
+
+def normalize_sample_col(df):
+    # try common options
+    for c in ["Sample", "sample", "Name", "ID", "Isolate", "Genome"]:
+        if c in df.columns:
+            df = df.rename(columns={c: "Sample"})
+            return df
+    # fallback to first column
+    df = df.rename(columns={df.columns[0]: "Sample"})
+    return df
+
+def ensure_int_cols(df, cols):
+    for c in cols:
+        if c not in df.columns:
+            df[c] = 0
+        df[c] = pd.to_numeric(df[c], errors="coerce").fillna(0).astype(int)
+    return df
+
+def get_intimin_profile(row):
+    present = [a for a in INTIMIN_ALLELES if a in row.index and int(row[a]) == 1]
+    if len(present) == 0:
+        return "None"
+    if len(present) == 1:
+        return present[0]
+    # if multiple alleles hit (rare), keep all
+    return ";".join(present)
+
+def build_espN_only_profile(markers_tsv, serotype_tsv, ids_file, label, out_prefix):
+    ids = load_ids(ids_file)
+
+    # marker table
+    m = pd.read_csv(markers_tsv, sep="\t")
+    m = normalize_sample_col(m)
+
+    # ensure needed cols exist
+    m = ensure_int_cols(m, ["espK", "espV", "espN"] + INTIMIN_ALLELES)
+
+    # subset to espN-only IDs
+    sub = m[m["Sample"].astype(str).isin(ids)].copy()
+
+    # sanity check: enforce espN-only definition
+    sub = sub[(sub["espK"] == 0) & (sub["espV"] == 0) & (sub["espN"] == 1)].copy()
+
+    # compute intimin allele label per isolate
+    sub["Intimin_allele"] = sub.apply(get_intimin_profile, axis=1)
+
+    # serotype table
+    s = pd.read_csv(serotype_tsv, sep="\t")
+    s = normalize_sample_col(s)
+
+    # keep only Serotype column (and optionally O/H if present)
+    keep_cols = ["Sample"]
+    for c in ["Serotype", "O-type", "H-type"]:
+        if c in s.columns:
+            keep_cols.append(c)
+    s = s[keep_cols].copy()
+
+    # merge
+    merged = sub.merge(s, on="Sample", how="left")
+
+    # output isolate-level table
+    isolate_out = f"{out_prefix}_{label}_espN_only_isolates.tsv"
+    merged.to_csv(isolate_out, sep="\t", index=False)
+
+    # summary: serotype distribution
+    if "Serotype" in merged.columns:
+        sero_sum = (
+            merged["Serotype"].fillna("NA")
+            .value_counts(dropna=False)
+            .reset_index()
+        )
+        sero_sum.columns = ["Serotype", "Count"]
+        sero_sum["Percent_within_espN_only(%)"] = (sero_sum["Count"] / sero_sum["Count"].sum() * 100).round(2)
+    else:
+        sero_sum = pd.DataFrame({"Serotype":["NA"], "Count":[len(merged)], "Percent_within_espN_only(%)":[100.0]})
+
+    sero_out = f"{out_prefix}_{label}_espN_only_serotype_summary.tsv"
+    sero_sum.to_csv(sero_out, sep="\t", index=False)
+
+    # summary: intimin allele distribution
+    inti_sum = (
+        merged["Intimin_allele"].fillna("NA")
+        .value_counts(dropna=False)
+        .reset_index()
+    )
+    inti_sum.columns = ["Intimin_allele", "Count"]
+    inti_sum["Percent_within_espN_only(%)"] = (inti_sum["Count"] / inti_sum["Count"].sum() * 100).round(2)
+
+    inti_out = f"{out_prefix}_{label}_espN_only_intimin_summary.tsv"
+    inti_sum.to_csv(inti_out, sep="\t", index=False)
+
+    print(f"\n[{label}] espN-only isolates found: {len(merged)}")
+    print(f"  - Isolate table: {isolate_out}")
+    print(f"  - Serotype summary: {sero_out}")
+    print(f"  - Intimin summary: {inti_out}")
+
+    return merged, sero_sum, inti_sum
+
+# -------------------------
+# Run
+# -------------------------
+if __name__ == "__main__":
+    build_espN_only_profile(EHEC_MARKERS, EHEC_SEROTYPE_TSV, EHEC_IDS, "EHEC", "RESULT")
+    build_espN_only_profile(EPEC_MARKERS, EPEC_SEROTYPE_TSV, EPEC_IDS, "EPEC", "RESULT")
+```
+Run it
+```
+python3 profile_espN_only_EHEC_EPEC.py
+```
+
+How to decide “EHEC-typical” vs “EPEC-like”
+
+Once those outputs are generated, here’s a simple interpretation rubric you can apply immediately:
+
+More EHEC-typical if:
+
+Serotype is one of classic EHEC-associated serotypes in your dataset (often O157/O26/O111/O145/O121, etc.)
+
+Intimin allele looks like the dominant EHEC alleles in your EHEC population (often Gamma/THETA depending on your set)
+
+They carry additional EHEC-enriched markers in your table (e.g., subA, etc., depending on what you tracked)
+
+More EPEC-like if:
+
+Serotype appears mainly in EPEC in your dataset
+
+Intimin allele is one you observed enriched in EPEC (you previously noted Epsilon as EPEC-only in your corrected review—this will be verified by the summaries)
+
+Lacks other EHEC-enriched markers besides espN
